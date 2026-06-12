@@ -1239,9 +1239,63 @@ function sumarDias(fecha, n) {
   return d.toISOString().slice(0, 10);
 }
 
+// ---------- Modo demo (?demo=1): datos de ejemplo para probar la app ----------
+function cargarDemo() {
+  const p = { sexo: 'm', edad: 32, peso: 78, altura: 178, actividad: 1.55, ajusteKcal: -250 };
+  DB.set('perfil', p);
+  DB.set('objetivos', calcularObjetivos(p));
+  const mk = (nombre, cantidad, kcal, prot, carb, gras) => ({ nombre, cantidad, kcal, prot, carb, gras });
+  const d = {
+    comidas: {
+      desayuno: [
+        mk('Avena (copos)', '60 g', 233, 10.2, 39.6, 4.2),
+        mk('Leche semidesnatada', '250 g', 115, 8, 12, 4),
+        mk('Plátano', '120 g', 107, 1.3, 27.6, 0.4)
+      ],
+      comida: [
+        mk('Arroz blanco cocido', '180 g', 234, 4.9, 50.4, 0.5),
+        mk('Pechuga de pollo (plancha)', '150 g', 248, 46.5, 0, 5.4),
+        mk('Aceite de oliva', '10 g', 88, 0, 0, 10),
+        mk('Tomate', '100 g', 18, 0.9, 3.9, 0.2)
+      ],
+      merienda: [mk('Yogur griego', '125 g', 150, 6, 5.6, 12.5), mk('Nueces', '20 g', 131, 3, 2.8, 13)],
+      cena: [mk('Merluza', '200 g', 172, 34, 0, 4), mk('Judías verdes', '200 g', 62, 3.6, 14, 0.4)]
+    },
+    agua: 5
+  };
+  DB.set('diario_' + hoyISO(), d);
+  // Historial: 14 días con kcal variadas + pesos descendentes
+  const pesos = [];
+  for (let i = 14; i >= 1; i--) {
+    const f = hoyISO(-i);
+    const kcal = 1750 + Math.round(Math.sin(i * 1.7) * 350);
+    DB.set('diario_' + f, { comidas: { comida: [mk('Resumen del día', '', kcal, 90, kcal * 0.45 / 4, kcal * 0.3 / 9)] }, agua: 6 });
+    if (i % 2 === 0) pesos.push({ fecha: f, kg: Math.round((79.5 - (14 - i) * 0.11) * 10) / 10 });
+  }
+  pesos.push({ fecha: hoyISO(), kg: 78 });
+  DB.set('pesos', pesos);
+  DB.set('plantillas', [{ id: 1, nombre: 'Cena habitual', items: d.comidas.cena }]);
+  DB.set('recetas', [{
+    id: 1, nombre: 'Lentejas con verduras', raciones: 4,
+    ingredientes: [
+      { nombre: 'Lentejas cocidas (400g)', kcal: 464, prot: 36, carb: 80, gras: 1.6 },
+      { nombre: 'Zanahoria (150g)', kcal: 62, prot: 1.4, carb: 15, gras: 0.3 },
+      { nombre: 'Chorizo (80g)', kcal: 364, prot: 19.2, carb: 1.6, gras: 31.2 },
+      { nombre: 'Aceite de oliva (15g)', kcal: 133, prot: 0, carb: 0, gras: 15 }
+    ]
+  }]);
+}
+
+const _params = new URLSearchParams(location.search);
+if (_params.get('demo') === '1' && !DB.get('perfil')) cargarDemo();
+
 // Service worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
 init();
+
+// Abrir una pestaña concreta con ?tab=progreso (útil para enlaces y capturas)
+const _tab = _params.get('tab');
+if (_tab && DB.get('perfil') && ['diario', 'anadir', 'progreso', 'recetas', 'ajustes'].includes(_tab)) cambiarTab(_tab);
