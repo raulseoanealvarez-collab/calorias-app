@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Calorías</title>
+<meta name="theme-color" content="#16a34a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Calorías">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== ONBOARDING / PERFIL ===== -->
+<div id="screen-onboarding" class="screen hidden">
+  <div class="onb-card">
+    <h1>👋 ¡Bienvenido!</h1>
+    <p class="muted">Configura tu perfil para calcular tus objetivos diarios.</p>
+    <label>Sexo
+      <select id="ob-sexo">
+        <option value="m">Hombre</option>
+        <option value="f">Mujer</option>
+      </select>
+    </label>
+    <label>Edad <input type="number" id="ob-edad" min="10" max="100" value="30"></label>
+    <label>Peso (kg) <input type="number" id="ob-peso" min="30" max="300" step="0.1" value="75"></label>
+    <label>Altura (cm) <input type="number" id="ob-altura" min="120" max="230" value="175"></label>
+    <label>Actividad
+      <select id="ob-actividad">
+        <option value="1.2">Sedentario (poco o nada de ejercicio)</option>
+        <option value="1.375">Ligera (1-3 días/semana)</option>
+        <option value="1.55" selected>Moderada (3-5 días/semana)</option>
+        <option value="1.725">Alta (6-7 días/semana)</option>
+        <option value="1.9">Muy alta (físico + entreno)</option>
+      </select>
+    </label>
+    <label>Objetivo
+      <select id="ob-objetivo">
+        <option value="-500">Perder peso (~0,5 kg/semana)</option>
+        <option value="-250">Perder peso suave (~0,25 kg/semana)</option>
+        <option value="0" selected>Mantener peso</option>
+        <option value="250">Ganar peso suave</option>
+        <option value="500">Ganar peso (~0,5 kg/semana)</option>
+      </select>
+    </label>
+    <button class="btn-primary" id="ob-guardar">Calcular y empezar</button>
+  </div>
+</div>
+
+<!-- ===== APP PRINCIPAL ===== -->
+<div id="app" class="hidden">
+
+  <!-- TAB: DIARIO -->
+  <section id="tab-diario" class="tab">
+    <header class="day-nav">
+      <button id="dia-prev">‹</button>
+      <div id="dia-titulo">Hoy</div>
+      <button id="dia-next">›</button>
+    </header>
+
+    <div class="resumen-card">
+      <div class="kcal-ring" id="kcal-ring">
+        <div class="kcal-ring-inner">
+          <div id="kcal-restantes">0</div>
+          <span>restantes</span>
+        </div>
+      </div>
+      <div class="macros-bars">
+        <div class="macro"><span>Proteínas</span><div class="bar"><div id="bar-prot" class="fill prot"></div></div><small id="txt-prot">0/0 g</small></div>
+        <div class="macro"><span>Carbohidratos</span><div class="bar"><div id="bar-carb" class="fill carb"></div></div><small id="txt-carb">0/0 g</small></div>
+        <div class="macro"><span>Grasas</span><div class="bar"><div id="bar-gras" class="fill gras"></div></div><small id="txt-gras">0/0 g</small></div>
+      </div>
+    </div>
+
+    <div class="agua-card">
+      <span>💧 Agua</span>
+      <div class="agua-ctrl">
+        <button id="agua-menos">−</button>
+        <span id="agua-vasos">0 vasos</span>
+        <button id="agua-mas">+</button>
+      </div>
+    </div>
+
+    <div id="comidas-lista"></div>
+  </section>
+
+  <!-- TAB: AÑADIR -->
+  <section id="tab-anadir" class="tab hidden">
+    <header class="tab-header"><h2>Añadir alimento</h2></header>
+    <div class="add-meta">
+      <label>Comida
+        <select id="add-comida">
+          <option value="desayuno">Desayuno</option>
+          <option value="almuerzo">Almuerzo</option>
+          <option value="comida">Comida</option>
+          <option value="merienda">Merienda</option>
+          <option value="cena">Cena</option>
+          <option value="snack">Snack</option>
+        </select>
+      </label>
+    </div>
+    <div class="add-acciones">
+      <button id="btn-escanear">📷 Escanear código</button>
+      <button id="btn-foto-ia">✨ Foto con IA</button>
+      <button id="btn-manual">✏️ Manual</button>
+    </div>
+    <div class="buscador">
+      <input type="search" id="busq-input" placeholder="Buscar alimento (Open Food Facts)...">
+      <button id="busq-btn">Buscar</button>
+    </div>
+    <div id="busq-frecuentes"></div>
+    <div id="busq-resultados"></div>
+    <div id="scanner-cont" class="hidden">
+      <div id="scanner"></div>
+      <button id="scanner-cerrar" class="btn-secondary">Cerrar escáner</button>
+    </div>
+    <input type="file" id="foto-input" accept="image/*" capture="environment" class="hidden">
+  </section>
+
+  <!-- TAB: PROGRESO -->
+  <section id="tab-progreso" class="tab hidden">
+    <header class="tab-header"><h2>Progreso</h2></header>
+    <div class="peso-card">
+      <label>Peso de hoy (kg)
+        <div class="peso-input-row">
+          <input type="number" id="peso-input" step="0.1" min="30" max="300">
+          <button id="peso-guardar">Guardar</button>
+        </div>
+      </label>
+    </div>
+    <canvas id="peso-chart" width="600" height="300"></canvas>
+    <div id="peso-historial"></div>
+    <h3>Resumen semanal</h3>
+    <canvas id="kcal-chart" width="600" height="260"></canvas>
+  </section>
+
+  <!-- TAB: RECETAS -->
+  <section id="tab-recetas" class="tab hidden">
+    <header class="tab-header"><h2>Recetas</h2></header>
+    <button class="btn-primary" id="receta-nueva">+ Nueva receta</button>
+    <div id="recetas-lista"></div>
+  </section>
+
+  <!-- TAB: AJUSTES -->
+  <section id="tab-ajustes" class="tab hidden">
+    <header class="tab-header"><h2>Ajustes</h2></header>
+    <div class="ajustes-grupo">
+      <h3>Objetivos diarios</h3>
+      <label>Calorías (kcal) <input type="number" id="aj-kcal"></label>
+      <label>Proteínas (g) <input type="number" id="aj-prot"></label>
+      <label>Carbohidratos (g) <input type="number" id="aj-carb"></label>
+      <label>Grasas (g) <input type="number" id="aj-gras"></label>
+      <label>Vasos de agua objetivo <input type="number" id="aj-agua" min="1" max="20"></label>
+      <button class="btn-secondary" id="aj-recalcular">Recalcular desde perfil</button>
+    </div>
+    <div class="ajustes-grupo">
+      <h3>IA para fotos</h3>
+      <label>Proveedor
+        <select id="aj-ia-prov">
+          <option value="claude">Claude (Anthropic)</option>
+          <option value="gemini">Gemini (Google)</option>
+        </select>
+      </label>
+      <label>API Key <input type="password" id="aj-ia-key" placeholder="sk-ant-... o AIza..."></label>
+    </div>
+    <div class="ajustes-grupo">
+      <h3>Datos</h3>
+      <button class="btn-secondary" id="aj-exportar">Exportar datos (JSON)</button>
+      <button class="btn-secondary" id="aj-importar">Importar datos</button>
+      <input type="file" id="aj-importar-file" accept=".json" class="hidden">
+      <button class="btn-danger" id="aj-borrar">Borrar todos los datos</button>
+    </div>
+    <button class="btn-primary" id="aj-guardar">Guardar ajustes</button>
+  </section>
+
+  <!-- NAV INFERIOR -->
+  <nav class="bottom-nav">
+    <button data-tab="diario" class="active">📋<span>Diario</span></button>
+    <button data-tab="anadir">➕<span>Añadir</span></button>
+    <button data-tab="progreso">📈<span>Progreso</span></button>
+    <button data-tab="recetas">🍲<span>Recetas</span></button>
+    <button data-tab="ajustes">⚙️<span>Ajustes</span></button>
+  </nav>
+</div>
+
+<!-- MODAL GENÉRICO -->
+<div id="modal" class="modal hidden">
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="html5-qrcode.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

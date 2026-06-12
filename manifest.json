@@ -1,0 +1,16 @@
+{
+  "name": "Calorías",
+  "short_name": "Calorías",
+  "description": "Contador de calorías y macros con escáner de códigos de barras y análisis de fotos con IA",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#16a34a",
+  "lang": "es",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
