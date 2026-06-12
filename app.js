@@ -138,6 +138,7 @@ function renderDiario() {
       <div class="comida-head">
         <h3>${COMIDAS_LABEL[c]}</h3>
         <div><span class="kcal">${Math.round(kcalC)} kcal</span>
+        ${items.length ? `<button data-save="${c}" title="Guardar como plantilla">💾</button>` : ''}
         <button data-add="${c}">+</button></div>
       </div>`;
     items.forEach((a, i) => {
@@ -156,6 +157,9 @@ function renderDiario() {
   }
   cont.querySelectorAll('[data-add]').forEach(b => {
     b.onclick = (e) => { e.stopPropagation(); $('add-comida').value = b.dataset.add; cambiarTab('anadir'); };
+  });
+  cont.querySelectorAll('[data-save]').forEach(b => {
+    b.onclick = (e) => { e.stopPropagation(); guardarPlantilla(b.dataset.save); };
   });
 }
 
@@ -178,6 +182,71 @@ function confirmarBorrado(comida, idx, nombre) {
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// ---------- Plantillas de comidas ----------
+function guardarPlantilla(comida) {
+  const d = getDiario(fechaActual);
+  const items = d.comidas[comida] || [];
+  if (!items.length) return;
+  const kcal = Math.round(items.reduce((s, a) => s + a.kcal, 0));
+  modal(`
+    <h3>💾 Guardar comida</h3>
+    <p class="muted">${items.length} alimentos · ${kcal} kcal. La podrás añadir entera con un toque desde la pestaña Añadir.</p>
+    <label>Nombre <input type="text" id="m-pl-nombre" value="${escapeHtml(COMIDAS_LABEL[comida].slice(3))} habitual"></label>
+    <div class="modal-acciones">
+      <button class="cancel" onclick="cerrarModal()">Cancelar</button>
+      <button class="ok" id="m-pl-ok">Guardar</button>
+    </div>`);
+  $('m-pl-ok').onclick = () => {
+    const plantillas = DB.get('plantillas', []);
+    plantillas.push({
+      id: Date.now(),
+      nombre: $('m-pl-nombre').value.trim() || 'Comida guardada',
+      items: JSON.parse(JSON.stringify(items))
+    });
+    DB.set('plantillas', plantillas);
+    cerrarModal();
+    toast('✅ Guardada en "Mis comidas"');
+  };
+}
+
+function renderPlantillas() {
+  const plantillas = DB.get('plantillas', []);
+  const cont = $('busq-plantillas');
+  if (!plantillas.length) { cont.innerHTML = ''; return; }
+  cont.innerHTML = '<h3>💾 Mis comidas</h3>';
+  for (const pl of plantillas) {
+    const kcal = Math.round(pl.items.reduce((s, a) => s + a.kcal, 0));
+    const el = document.createElement('div');
+    el.className = 'resultado-item';
+    el.innerHTML = `
+      <div class="info">
+        <div class="nombre">${escapeHtml(pl.nombre)}</div>
+        <div class="detalle">${pl.items.map(i => escapeHtml(i.nombre)).join(', ').slice(0, 60)} · ${kcal} kcal</div>
+      </div>
+      <button class="pl-del" style="background:var(--card2);width:32px;height:32px;font-size:0.9rem">✕</button>
+      <button class="pl-add">+</button>`;
+    el.querySelector('.pl-add').onclick = () => {
+      const comida = $('add-comida').value;
+      for (const item of pl.items) anadirAlimento(fechaActual, comida, JSON.parse(JSON.stringify(item)));
+      toast(`✅ "${pl.nombre}" añadida (${pl.items.length} alimentos)`);
+      cambiarTab('diario');
+    };
+    el.querySelector('.pl-del').onclick = () => {
+      modal(`<h3>¿Eliminar plantilla?</h3><p class="muted">${escapeHtml(pl.nombre)}</p>
+        <div class="modal-acciones">
+          <button class="cancel" onclick="cerrarModal()">Cancelar</button>
+          <button class="ok" style="background:#7f1d1d" id="m-pl-del">Eliminar</button>
+        </div>`);
+      $('m-pl-del').onclick = () => {
+        DB.set('plantillas', DB.get('plantillas', []).filter(x => x.id !== pl.id));
+        cerrarModal();
+        renderPlantillas();
+      };
+    };
+    cont.appendChild(el);
+  }
 }
 
 // ---------- Consejos ----------
@@ -877,7 +946,7 @@ function cambiarTab(nombre) {
   document.querySelectorAll('.bottom-nav button').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === nombre));
   if (nombre === 'diario') renderDiario();
-  if (nombre === 'anadir') renderFrecuentes();
+  if (nombre === 'anadir') { renderPlantillas(); renderFrecuentes(); }
   if (nombre === 'progreso') renderProgreso();
   if (nombre === 'recetas') renderRecetas();
   if (nombre === 'ajustes') cargarAjustes();
