@@ -79,6 +79,15 @@ button { cursor: pointer; border: none; border-radius: 10px; font-size: 1rem; co
 .fill.carb { background: var(--carb); }
 .fill.gras { background: var(--gras); }
 
+/* Consejos */
+.consejos-card { background: var(--card); border-radius: var(--radius); padding: 14px 16px; margin-top: 12px; }
+.consejo { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; font-size: 0.88rem; }
+.consejo .ico { font-size: 1.1rem; }
+.consejo.alerta { color: #fca5a5; }
+.consejo.ok { color: #86efac; }
+.btn-consejo-ia { width: 100%; padding: 10px; background: var(--card2); margin-top: 8px; font-size: 0.88rem; }
+.ia-consejo-texto { white-space: pre-wrap; font-size: 0.92rem; line-height: 1.5; }
+
 /* Agua */
 .agua-card { background: var(--card); border-radius: var(--radius); padding: 14px 18px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; }
 .agua-ctrl { display: flex; align-items: center; gap: 14px; }

@@ -124,6 +124,8 @@ function renderDiario() {
   // Agua
   $('agua-vasos').textContent = `${d.agua || 0}/${obj.agua} vasos`;
 
+  renderConsejos(tot, obj, d);
+
   // Bloques de comidas
   const cont = $('comidas-lista');
   cont.innerHTML = '';
@@ -176,6 +178,116 @@ function confirmarBorrado(comida, idx, nombre) {
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// ---------- Consejos ----------
+function renderConsejos(tot, obj, d) {
+  const cont = $('consejos-card');
+  const consejos = [];
+  const esHoy = fechaActual === hoyISO();
+  const hora = new Date().getHours();
+  // Fracción del día "comestible" transcurrida (de 7h a 22h)
+  const avance = esHoy ? Math.min(1, Math.max(0, (hora - 7) / 15)) : 1;
+  const exceso = tot.kcal - obj.kcal;
+
+  if (exceso > 0) {
+    consejos.push({ ico: '🔴', cls: 'alerta', txt: `Te has pasado ${Math.round(exceso)} kcal del objetivo. ${hora < 20 && esHoy ? 'Intenta una cena ligera (verdura, proteína) y, si puedes, sal a caminar 30 min.' : 'No pasa nada por un día: mañana vuelve a tu pauta, no compenses saltándote comidas.'}` });
+  } else if (avance > 0.9 && tot.kcal < obj.kcal * 0.7) {
+    consejos.push({ ico: '🟡', cls: 'alerta', txt: `Llevas solo ${Math.round(tot.kcal)} kcal — te faltan ${Math.round(obj.kcal - tot.kcal)} para tu objetivo. Comer demasiado poco también frena el progreso; añade algo nutritivo antes de dormir (yogur, frutos secos, fruta).` });
+  } else if (esHoy && tot.kcal > obj.kcal * (avance + 0.2)) {
+    consejos.push({ ico: '🟠', cls: '', txt: `Vas algo rápido: ya llevas el ${Math.round((tot.kcal / obj.kcal) * 100)}% de tus calorías. Resérvate ${Math.round(obj.kcal - tot.kcal)} kcal para lo que queda de día.` });
+  }
+
+  if (avance > 0.5 && tot.prot < obj.prot * avance * 0.6) {
+    consejos.push({ ico: '🥩', cls: '', txt: `Vas corto de proteína (${Math.round(tot.prot)} de ${obj.prot} g). Buenas opciones: pollo, huevos, atún, yogur griego o legumbres.` });
+  }
+
+  if (esHoy && avance > 0.5 && (d.agua || 0) < obj.agua * avance * 0.5) {
+    consejos.push({ ico: '💧', cls: '', txt: `Solo ${d.agua || 0} vasos de agua. ¡Hidrátate!` });
+  }
+
+  if (!consejos.length && tot.kcal > 0) {
+    consejos.push({ ico: '✅', cls: 'ok', txt: avance >= 1 ? '¡Buen día! Has cumplido tu objetivo sin pasarte.' : 'Todo en orden: vas bien encaminado con tus objetivos de hoy.' });
+  }
+
+  cont.innerHTML = consejos.map(c =>
+    `<div class="consejo ${c.cls}"><span class="ico">${c.ico}</span><span>${c.txt}</span></div>`).join('');
+
+  if (tot.kcal > 0) {
+    const btn = document.createElement('button');
+    btn.className = 'btn-consejo-ia';
+    btn.textContent = '🤖 Pedir consejo a la IA';
+    btn.onclick = consejoIA;
+    cont.appendChild(btn);
+  }
+  if (!consejos.length && tot.kcal === 0) {
+    cont.innerHTML = '<div class="consejo"><span class="ico">📝</span><span>Registra lo que comas y aquí te iré aconsejando.</span></div>';
+  }
+}
+
+async function consejoIA() {
+  const ia = DB.get('ia', {});
+  if (!ia.key) { toast('⚙️ Configura la API key de IA en Ajustes'); cambiarTab('ajustes'); return; }
+
+  const obj = DB.get('objetivos');
+  const tot = totalesDia(fechaActual);
+  const perfil = DB.get('perfil', {});
+  const d = getDiario(fechaActual);
+  const lista = [];
+  for (const c of COMIDAS) {
+    for (const a of (d.comidas[c] || [])) lista.push(`${COMIDAS_LABEL[c].slice(3)}: ${a.nombre} (${Math.round(a.kcal)} kcal)`);
+  }
+  const objetivo = perfil.ajusteKcal < 0 ? 'perder peso' : perfil.ajusteKcal > 0 ? 'ganar peso' : 'mantener peso';
+
+  const prompt = `Eres un nutricionista práctico y cercano. Mi objetivo es ${objetivo}.
+Objetivos de hoy: ${obj.kcal} kcal, ${obj.prot} g proteína, ${obj.carb} g carbohidratos, ${obj.gras} g grasas.
+Llevo consumido: ${Math.round(tot.kcal)} kcal, ${Math.round(tot.prot)} g proteína, ${Math.round(tot.carb)} g carbohidratos, ${Math.round(tot.gras)} g grasas.
+Son las ${new Date().getHours()}:00. Lo que he comido hoy:
+${lista.join('\n') || '(nada registrado)'}
+
+Dame 2-3 consejos breves y concretos para lo que queda de día (qué cenar, qué evitar, qué mejorar). Máximo 80 palabras, sin saludos ni despedidas.`;
+
+  toast('🤖 Pensando... <span class="spinner"></span>', 20000);
+  try {
+    const texto = await iaTexto(ia, prompt);
+    modal(`<h3>🤖 Consejo de la IA</h3>
+      <p class="ia-consejo-texto">${escapeHtml(texto)}</p>
+      <div class="modal-acciones"><button class="ok" onclick="cerrarModal()">Entendido</button></div>`);
+    $('toast').classList.add('hidden');
+  } catch (e) {
+    toast('❌ Error de IA: ' + (e.message || e), 5000);
+  }
+}
+
+async function iaTexto(ia, prompt) {
+  if (ia.prov === 'gemini') {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${ia.key}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error?.message || 'HTTP ' + r.status); }
+    const data = await r.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta';
+  }
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': ia.key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-8',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error?.message || 'HTTP ' + r.status); }
+  const data = await r.json();
+  if (data.stop_reason === 'refusal') throw new Error('La IA rechazó la petición');
+  return (data.content || []).find(b => b.type === 'text')?.text || 'Sin respuesta';
 }
 
 // ---------- Modal ----------
