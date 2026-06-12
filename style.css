@@ -123,6 +123,19 @@ button { cursor: pointer; border: none; border-radius: 10px; font-size: 1rem; co
 #scanner { border-radius: var(--radius); overflow: hidden; }
 
 /* Progreso */
+.racha-card { background: var(--card); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+.racha-card .num { font-size: 1.5rem; font-weight: 700; color: var(--green-l); }
+.calendario-card { background: var(--card); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 14px; }
+.calendario-card h3 { margin-top: 0; text-transform: capitalize; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+.cal-dow { color: var(--muted); font-size: 0.7rem; padding: 2px 0; }
+.cal-dia { font-size: 0.78rem; padding: 7px 0; border-radius: 8px; background: var(--card2); color: var(--muted); }
+.cal-dia.ok { background: #14532d; color: #86efac; }
+.cal-dia.pasado { background: #7f1d1d; color: #fca5a5; }
+.cal-dia.hoy { outline: 2px solid var(--green-l); }
+.cal-leyenda { display: flex; gap: 14px; margin-top: 10px; font-size: 0.72rem; color: var(--muted); }
+.cal-leyenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; }
+
 .peso-card { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
 .peso-input-row { display: flex; gap: 8px; }
 .peso-input-row input { margin-top: 0; }
